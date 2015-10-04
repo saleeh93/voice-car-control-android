@@ -13,7 +13,9 @@ import android.speech.RecognizerIntent;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -29,7 +31,7 @@ public class MainActivity extends AppCompatActivity
         implements BluetoothSerialListener, BluetoothDeviceListDialog.OnDeviceSelectedListener {
 
     private TextView txtSpeechInput;
-    private ImageButton btnSpeak;
+    private Button btnSpeak;
     private final int REQ_CODE_SPEECH_INPUT = 100;
     private static final int REQUEST_ENABLE_BLUETOOTH = 1;
 
@@ -46,7 +48,7 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         txtSpeechInput = (TextView) findViewById(R.id.txtSpeechInput);
-        btnSpeak = (ImageButton) findViewById(R.id.btnSpeak);
+        btnSpeak = (Button) findViewById(R.id.btnSpeak);
 
 
         btnSpeak.setOnClickListener(new View.OnClickListener() {
@@ -58,6 +60,7 @@ public class MainActivity extends AppCompatActivity
         });
 
         bluetoothSerial = new BluetoothSerial(this, this);
+
 
     }
 
@@ -83,6 +86,8 @@ public class MainActivity extends AppCompatActivity
     /**
      * Receiving speech input
      */
+    String lastCmd = "";
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -94,18 +99,29 @@ public class MainActivity extends AppCompatActivity
                     ArrayList<String> result = data
                             .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
                     String cmd = result.get(0);
-                    if (cmd.equals("forward")) {
-                        bluetoothSerial.write("F");
+                    addToCmd(cmd);
 
-                    } else if (cmd.equals("reverse")) {
+                    if (cmd.equals("go")) {
+                        bluetoothSerial.write("F");
+                        lastCmd = cmd;
+
+                    } else if (cmd.equals("back")) {
                         bluetoothSerial.write("B");
+                        lastCmd = cmd;
+
+
+                    } else if (cmd.equals("right")) {
+                        if (lastCmd.equals("go"))
+                            bluetoothSerial.write("I");
+                        else
+                            bluetoothSerial.write("J");
 
 
                     } else if (cmd.equals("left")) {
-                        bluetoothSerial.write("L");
-
-                    } else if (cmd.equals("right")) {
-                        bluetoothSerial.write("R");
+                        if (lastCmd.equals("go"))
+                            bluetoothSerial.write("G");
+                        else
+                            bluetoothSerial.write("H");
 
 
                     } else if (cmd.equals("stop")) {
@@ -113,6 +129,7 @@ public class MainActivity extends AppCompatActivity
 
 
                     }
+
                 }
                 break;
             }
@@ -121,6 +138,35 @@ public class MainActivity extends AppCompatActivity
                 if (resultCode == Activity.RESULT_OK) {
                     bluetoothSerial.setup();
                 }
+                break;
+
+        }
+    }
+
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.button_f:
+                bluetoothSerial.write("F");
+                lastCmd = "go";
+                break;
+            case R.id.button_b:
+                bluetoothSerial.write("B");
+                lastCmd = "back";
+                break;
+            case R.id.button_l:
+                if (lastCmd.equals("go"))
+                    bluetoothSerial.write("G");
+                else
+                    bluetoothSerial.write("H");
+                break;
+            case R.id.button_r:
+                if (lastCmd.equals("go"))
+                    bluetoothSerial.write("I");
+                else
+                    bluetoothSerial.write("J");
+                break;
+            case R.id.button_s:
+                bluetoothSerial.write("S");
                 break;
 
         }
@@ -306,6 +352,10 @@ public class MainActivity extends AppCompatActivity
     public void onBluetoothDeviceSelected(BluetoothDevice device) {
         // Connect to the selected remote Bluetooth device
         bluetoothSerial.connect(device);
+    }
+
+    public void addToCmd(String cmd) {
+        txtSpeechInput.setText(txtSpeechInput.getText() + "\n" + cmd);
     }
 
 
